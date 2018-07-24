@@ -10,6 +10,7 @@ from chainer.training import extensions
 from chainer.datasets import mnist
 from chainer.dataset import concat_examples
 from convolutional_auto_encoder import ConvolutionalAutoEncoder
+from linear_auto_encoder import LinearAutoEncoder
 import matplotlib.pyplot as plt
 
 
@@ -37,15 +38,19 @@ def train_model(model):
 
     if use_gpu:
         model.to_gpu(gpu_id)
-
-    optimizer = optimizers.MomentumSGD(lr=0.01, momentum=0.9)
+    if model.is_convolution():
+        optimizer = optimizers.MomentumSGD(lr=0.01, momentum=0.9)
+    else:
+        optimizer = optimizers.Adam()
     optimizer.setup(model)
 
     max_epoch = 10
     while train_iter.epoch < max_epoch:
+        chainer.using_config('train', True)
         train_batch = train_iter.next()
         image_train, _ = concat_examples(train_batch, gpu_id)
-        image_train = image_train.reshape(-1, 1, 28, 28)
+        if model.is_convolution():
+            image_train = image_train.reshape(-1, 1, 28, 28)
         # print('training image shape: ', image_train.shape)
 
         prediction_train = model(image_train)
@@ -65,11 +70,13 @@ def train_model(model):
 
 
 def test_model(model, test_iter):
+    chainer.using_config('train', False)
     test_losses = []
     while True:
         test_batch = test_iter.next()
         image_test, _ = concat_examples(test_batch, gpu_id)
-        image_test = image_test.reshape(-1, 1, 28, 28)
+        if model.is_convolution():
+            image_test = image_test.reshape(-1, 1, 28, 28)
         prediction_test = model(image_test)
 
         loss_test = F.mean_squared_error(image_test, prediction_test)
@@ -89,6 +96,7 @@ def save_model(path, model):
 
 
 def try_model(path, model):
+    chainer.using_config('train', False)
     serializers.load_npz(path, model)
 
     _, test = mnist.get_mnist(withlabel=True, ndim=1)
@@ -109,13 +117,27 @@ def try_model(path, model):
     plt.show()
 
 
-def main():
+def cae():
     path = 'cae.model'
     model = ConvolutionalAutoEncoder()
     train_model(model)
     save_model(path, model)
     model = ConvolutionalAutoEncoder()
     try_model(path, model)
+
+
+def linear():
+    path = 'linear.model'
+    model = LinearAutoEncoder()
+    train_model(model)
+    save_model(path, model)
+    model = LinearAutoEncoder()
+    try_model(path, model)
+
+
+def main():
+    cae()
+    # linear()
 
 
 if __name__ == '__main__':

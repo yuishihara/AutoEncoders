@@ -11,3 +11,9 @@ class AutoEncoder(Chain):
 
     def decode(self):
         raise NotImplementedError("decode() not implemented")
+
+    def is_convolution(self):
+        return False
+
+    def __call__(self, x):
+        return self.decode(self.encode(x))

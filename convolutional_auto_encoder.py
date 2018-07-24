@@ -36,5 +36,5 @@ class ConvolutionalAutoEncoder(AutoEncoder):
         h = F.relu(self.deconv7(h))
         return F.sigmoid(self.deconv8(h))
 
-    def __call__(self, x):
-        return self.decode(self.encode(x))
+    def is_convolution(self):
+        return True
