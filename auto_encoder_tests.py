@@ -11,6 +11,7 @@ from chainer.datasets import mnist
 from chainer.dataset import concat_examples
 from convolutional_auto_encoder import ConvolutionalAutoEncoder
 from linear_auto_encoder import LinearAutoEncoder
+from variational_auto_encoder import VariationalAutoEncoder
 import matplotlib.pyplot as plt
 
 
@@ -21,6 +22,7 @@ if use_gpu:
 
 
 def train_model(model):
+    chainer.using_config('train', True)
     print('training model: ', model.name)
     train, test = mnist.get_mnist(withlabel=True, ndim=1)
 
@@ -53,9 +55,7 @@ def train_model(model):
             image_train = image_train.reshape(-1, 1, 28, 28)
         # print('training image shape: ', image_train.shape)
 
-        prediction_train = model(image_train)
-
-        loss = F.mean_squared_error(image_train, prediction_train)
+        loss = model.loss(image_train, image_train)
         # print('loss shape: ', loss.shape)
         model.cleargrads()
         loss.backward()
@@ -117,6 +117,22 @@ def try_model(path, model):
     plt.show()
 
 
+def generate_image(model):
+    chainer.using_config('train', False)
+    if model.name != "Variational Auto Encoder":
+        raise NotImplementedError("can not generate image for " + str(model.name))
+    data_mu = np.zeros((1, 1, 20), dtype=np.float32)
+    data_ln_var = np.zeros((1, 1, 20), dtype=np.float32)
+    mu = Variable(data_mu)
+    ln_var = Variable(data_ln_var) 
+    z = model._sample(mu, ln_var)
+    y = model.decode(z).data
+    
+    plt.imshow(y.reshape(28, 28), cmap='gray')
+    plt.show()
+
+   
+
 def cae():
     path = 'cae.model'
     model = ConvolutionalAutoEncoder()
@@ -134,10 +150,20 @@ def linear():
     model = LinearAutoEncoder()
     try_model(path, model)
 
+def vae():
+    path = 'vae.model'
+    model = VariationalAutoEncoder()
+    train_model(model)
+    save_model(path, model)
+    model = VariationalAutoEncoder()
+    try_model(path, model)
+    generate_image(model)
+
 
 def main():
-    cae()
+    # cae()
     # linear()
+    vae()
 
 
 if __name__ == '__main__':
